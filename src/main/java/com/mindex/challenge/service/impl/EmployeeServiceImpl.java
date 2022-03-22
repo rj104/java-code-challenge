@@ -2,12 +2,14 @@ package com.mindex.challenge.service.impl;
 
 import com.mindex.challenge.dao.EmployeeRepository;
 import com.mindex.challenge.data.Employee;
+import com.mindex.challenge.data.ReportingStructure;
 import com.mindex.challenge.service.EmployeeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.UUID;
+import java.util.List;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService {
@@ -45,5 +47,44 @@ public class EmployeeServiceImpl implements EmployeeService {
         LOG.debug("Updating employee [{}]", employee);
 
         return employeeRepository.save(employee);
+    }
+
+    @Override
+    public ReportingStructure getReportingStructure(String employeeId) {
+
+        LOG.debug("getReportingStructure() with employeeId [{}]", employeeId);
+
+        Employee employee = employeeRepository.findByEmployeeId(employeeId);
+
+        if(employee == null) {
+            throw new RuntimeException("Invalid employeeId: " + employeeId);
+        }
+
+        ReportingStructure reportingStructure = new ReportingStructure();
+        reportingStructure.setEmployeeId(employeeId);
+        //get number of reports and set in reporting structure
+        int numReports = getNumReports(employee);
+        reportingStructure.setNumReports(numReports);
+
+        return reportingStructure;
+    }
+
+    // Recursive method to get total number of reports for given employee.
+    private int getNumReports(Employee employee) {
+        List<Employee> directReports = employee.getDirectReports();
+        if(directReports == null)
+        {
+            LOG.debug("No direct reports for [{}]", employee.getFirstName());
+            return 0;
+        }
+        int result = directReports.size();
+        for(Employee emp : directReports) {
+            Employee dirReportEmp = employeeRepository.findByEmployeeId(emp.getEmployeeId());
+            if(dirReportEmp != null) {
+                result += getNumReports(dirReportEmp);
+            }
+        }
+        LOG.debug("[{}] direct reports for [{}]", result, employee.getFirstName());
+        return result;
     }
 }
